@@ -114,12 +114,11 @@ export default class MainScene extends Phaser.Scene {
     }
 
     private handleHitBomb() {
-        this.physics.pause();
-
-        this.player?.setTint(0xff0000);
+        this.player?.setTint();
         this.player?.anims.play("turn");
 
         this.gameOver = true;
+        this.physics.pause();
     }
 
     private handleCollectStar(
@@ -151,12 +150,14 @@ export default class MainScene extends Phaser.Scene {
                         ? Phaser.Math.Between(400, 800)
                         : Phaser.Math.Between(0, 400);
 
-                const bomb = this.bombs?.create(x, 16, "bomb");
-                if (bomb) {
-                    bomb.setBounce(1);
-                    bomb.setCollideWorldBounds(true);
-                    bomb.setVelocityY(Phaser.Math.Between(-200, 200));
-                }
+                const bomb: Phaser.Physics.Arcade.Image = this.bombs?.create(
+                    x,
+                    16,
+                    "bomb"
+                );
+                bomb.setBounce(1);
+                bomb.setCollideWorldBounds(true);
+                bomb.setVelocity(Phaser.Math.Between(-200, 200), 20);
             }
         }
     }
