@@ -4,6 +4,14 @@ export default class MainScene extends Phaser.Scene {
     private platforms?: Phaser.Physics.Arcade.StaticGroup;
     private player?: Phaser.Physics.Arcade.Sprite;
     private cursors?: Phaser.Types.Input.Keyboard.CursorKeys;
+    private stars?: Phaser.Physics.Arcade.Group;
+
+    private score: number = 0;
+    private scoreText?: Phaser.GameObjects.Text;
+
+    private bombs?: Phaser.Physics.Arcade.Group;
+
+    private gameOver = false;
 
     constructor() {
         super({ key: "MainScene" });
@@ -58,13 +66,99 @@ export default class MainScene extends Phaser.Scene {
 
         this.cursors = this.input.keyboard?.createCursorKeys();
 
+        this.stars = this.physics.add.group({
+            key: "star",
+            repeat: 11,
+            setXY: { x: 12, y: 0, stepX: 70 },
+        });
+
+        this.stars.children.iterate((c) => {
+            const child = c as Phaser.Physics.Arcade.Image;
+            child.setBounceY(Phaser.Math.FloatBetween(0.4, 0.8));
+            return true;
+        });
+
+        this.physics.add.collider(this.stars, this.platforms);
+        this.physics.add.overlap(
+            this.player,
+            this.stars,
+            this.handleCollectStar,
+            undefined,
+            this
+        );
+
+        this.scoreText = this.add.text(16, 16, "score: 0", {
+            fontSize: "32px",
+            color: "#000",
+        });
+
+        this.bombs = this.physics.add.group();
+
+        this.physics.add.collider(this.bombs, this.platforms);
+        this.physics.add.collider(
+            this.player,
+            this.bombs,
+            this.handleHitBomb,
+            undefined,
+            this
+        );
+
         const message = `Phaser v${Phaser.VERSION}`;
+
         this.add
             .text(this.cameras.main.width - 15, 15, message, {
                 color: "#000000",
                 fontSize: "24px",
             })
             .setOrigin(1, 0);
+    }
+
+    private handleHitBomb() {
+        this.physics.pause();
+
+        this.player?.setTint(0xff0000);
+        this.player?.anims.play("turn");
+
+        this.gameOver = true;
+    }
+
+    private handleCollectStar(
+        player:
+            | Phaser.Types.Physics.Arcade.GameObjectWithBody
+            | Phaser.Tilemaps.Tile,
+        star:
+            | Phaser.Types.Physics.Arcade.GameObjectWithBody
+            | Phaser.Tilemaps.Tile
+    ) {
+        const s = star as Phaser.Physics.Arcade.Image;
+        s.disableBody(true, true);
+
+        this.score += 10;
+        if (this.scoreText) {
+            this.scoreText.setText(`Score: ${this.score}`);
+        }
+
+        if (this.stars?.countActive(true) === 0) {
+            this.stars.children.iterate((c) => {
+                const child = c as Phaser.Physics.Arcade.Image;
+                child.enableBody(true, child.x, 0, true, true);
+                return true;
+            });
+
+            if (this.player) {
+                const x =
+                    this.player.x < 400
+                        ? Phaser.Math.Between(400, 800)
+                        : Phaser.Math.Between(0, 400);
+
+                const bomb = this.bombs?.create(x, 16, "bomb");
+                if (bomb) {
+                    bomb.setBounce(1);
+                    bomb.setCollideWorldBounds(true);
+                    bomb.setVelocityY(Phaser.Math.Between(-200, 200));
+                }
+            }
+        }
     }
 
     update() {
